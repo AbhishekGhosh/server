@@ -167,14 +167,14 @@ class ShareByMailProvider implements IShareProvider {
 		if ($share->getShareOwner() !== $share->getSharedBy()) {
 			$ownerFolder = $this->rootFolder->getUserFolder($share->getShareOwner());
 			$fileId = $share->getNode()->getId();
-			$node = $ownerFolder->getById($fileId);
-			$ownerPath = $node[0]->getPath();
+			$nodes = $ownerFolder->getById($fileId);
+			$ownerPath = $nodes[0]->getPath();
 			$this->publishActivity(
 				Activity::SUBJECT_SHARED_EMAIL_BY,
 				[$ownerFolder->getRelativePath($ownerPath), $share->getSharedWith(), $share->getSharedBy()],
 				$share->getShareOwner(),
 				$fileId,
-				$userFolder->getRelativePath($ownerPath)
+				$ownerFolder->getRelativePath($ownerPath)
 			);
 		}
 
@@ -240,15 +240,17 @@ class ShareByMailProvider implements IShareProvider {
 	}
 
 	protected function sendMailNotification($filename, $link, $owner, $initiator, $shareWith) {
+		$ownerDisplayName = $this->userManager->get($owner)->getDisplayName();
 		if ($owner === $initiator) {
-			$subject = (string)$this->l->t('%s shared »%s« with you', array($owner, $filename));
+			$subject = (string)$this->l->t('%s shared »%s« with you', array($ownerDisplayName, $filename));
 		} else {
-			$subject = (string)$this->l->t('%s shared »%s« with you on behalf of %s', array($owner, $filename, $initiator));
+			$initiatorDisplayName = $this->userManager->get($initiator)->getDisplayName();
+			$subject = (string)$this->l->t('%s shared »%s« with you on behalf of %s', array($ownerDisplayName, $filename, $initiatorDisplayName));
 		}
 
 		$message = $this->mailer->createMessage();
-		$htmlBody = $this->createMailBody('mail', $filename, $link, $owner, $initiator);
-		$textBody = $this->createMailBody('altmail', $filename, $link, $owner, $initiator);
+		$htmlBody = $this->createMailBody('mail', $filename, $link, $ownerDisplayName, $initiatorDisplayName);
+		$textBody = $this->createMailBody('altmail', $filename, $link, $ownerDisplayName, $initiatorDisplayName);
 		$message->setTo([$shareWith]);
 		$message->setSubject($subject);
 		$message->setBody($textBody, 'text/plain');
